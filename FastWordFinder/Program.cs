@@ -9,32 +9,38 @@ namespace FastWordFinder
 {
     class Program
     {
-        // name of the wordlist
+        // name of the fallback wordlist
         const string WordlistFileName = "words.txt";
 
-        // read a wordlist from the directory that the executable is in
-        static IEnumerable<string> ReadWordList()
+        static IEnumerable<string> ReadWordList(string filename)
         {
-            var file = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), WordlistFileName);
-            return File.ReadAllLines(file);
+            if (!File.Exists(filename))
+                throw new IOException("Specified word list does not exist: " + filename);
+
+            string line;
+            using (var sr = new StreamReader(filename))
+                while ((line = sr.ReadLine()) != null)
+                    yield return line;
         }
 
         static void Main(string[] args)
         {
+            // get the correct word list file
+            string wordlistPath;
+            if (args.Length > 0)
+                wordlistPath = args[0];
+            else
+                wordlistPath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), WordlistFileName);
+
             var sw = new Stopwatch();
-
-            // read words
-            sw.Start();
-            var list = ReadWordList();
-            sw.Stop();
-            Console.WriteLine("Read {0} words in {1}ms.", list.Count(), sw.ElapsedMilliseconds);
-            sw.Reset();
-
-            // build tree
+            
             Console.Write("Building tree... ");
             sw.Start();
+
+            var list = ReadWordList(wordlistPath);
             var tree = new PrefixTree();
             tree.BuildTree(list);
+
             sw.Stop();
             Console.WriteLine("done in {0}ms.", sw.ElapsedMilliseconds);
             sw.Reset();
